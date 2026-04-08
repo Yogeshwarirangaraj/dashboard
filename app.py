@@ -31,16 +31,16 @@ try:
     df = load_data("data.xlsx")
     st.success("✅ Loaded data from repo (data.xlsx)")
 
-except:
-    # OPTION 2: Load from URL (if configured)
+except Exception:
     try:
+        # OPTION 2: Load from URL (if configured)
         if "DATA_URL" in st.secrets:
             df = load_data_from_url(st.secrets["DATA_URL"])
             st.success("✅ Loaded data from URL")
         else:
-            raise Exception("No URL")
+            raise Exception("No URL configured")
 
-    except:
+    except Exception:
         # OPTION 3: Manual upload fallback
         uploaded_file = st.file_uploader("Upload Excel", type=["xlsx"])
         if uploaded_file:
