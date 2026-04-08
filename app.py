@@ -2,20 +2,45 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Recruiter Dashboard", layout="wide")
+st.set_page_config(page_title="Elite Recruiter Dashboard", layout="wide")
 
 # -----------------------------
-# 🎨 CLEAN DARK UI
+# 🎨 ELITE GLASS UI
 # -----------------------------
 st.markdown("""
 <style>
-.stApp {background: #0f172a; color: white;}
-.metric {background:#1e293b; padding:20px; border-radius:12px; text-align:center;}
-.section {background:#111827; padding:20px; border-radius:12px; margin-bottom:20px;}
+.stApp {
+    background: linear-gradient(135deg, #0f172a, #020617);
+    color: white;
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.kpi {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    padding: 25px;
+    text-align: center;
+    transition: 0.3s;
+}
+
+.kpi:hover {
+    transform: scale(1.05);
+    background: rgba(255,255,255,0.15);
+}
+
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 Recruiter Productivity Dashboard")
+st.title("🚀 Elite Recruiter Intelligence Dashboard")
 
 # -----------------------------
 # LOAD DATA
@@ -35,68 +60,85 @@ def load_data():
 try:
     df = load_data()
 except:
-    st.error("❌ data.xlsx not loading properly")
+    st.error("❌ Error loading Excel")
     st.stop()
 
 # -----------------------------
-# FILTERS
+# FILTERS TOP BAR
 # -----------------------------
-st.sidebar.header("Filters")
-weeks = st.sidebar.multiselect("Week", df['Week'].unique(), default=df['Week'].unique())
-recruiters = st.sidebar.multiselect("Recruiter", df['Recruiter Name'].unique(), default=df['Recruiter Name'].unique())
+f1, f2 = st.columns(2)
+weeks = f1.multiselect("Week", df['Week'].unique(), default=df['Week'].unique())
+recruiters = f2.multiselect("Recruiter", df['Recruiter Name'].unique(), default=df['Recruiter Name'].unique())
 
 filtered_df = df[(df['Week'].isin(weeks)) & (df['Recruiter Name'].isin(recruiters))]
 
 # -----------------------------
-# KPI CALCULATION
+# KPI LOGIC
 # -----------------------------
-total_activity = filtered_df.select_dtypes(include='number').sum().sum()
+total = filtered_df.select_dtypes(include='number').sum().sum()
 
-# Try to detect columns
-sub_col = [c for c in df.columns if 'sub' in c.lower()]
-int_col = [c for c in df.columns if 'interview' in c.lower()]
-off_col = [c for c in df.columns if 'offer' in c.lower()]
-
-submissions = filtered_df[sub_col[0]].sum() if sub_col else 0
-interviews = filtered_df[int_col[0]].sum() if int_col else 0
-offers = filtered_df[off_col[0]].sum() if off_col else 0
-
-# -----------------------------
-# KPI UI
-# -----------------------------
-st.markdown("<div class='section'>", unsafe_allow_html=True)
-col1, col2, col3, col4 = st.columns(4)
-
-col1.markdown(f"<div class='metric'><h3>Submissions</h3><h1>{int(submissions)}</h1></div>", unsafe_allow_html=True)
-col2.markdown(f"<div class='metric'><h3>Interviews</h3><h1>{int(interviews)}</h1></div>", unsafe_allow_html=True)
-col3.markdown(f"<div class='metric'><h3>Offers</h3><h1>{int(offers)}</h1></div>", unsafe_allow_html=True)
-col4.markdown(f"<div class='metric'><h3>Total Activity</h3><h1>{int(total_activity)}</h1></div>", unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# -----------------------------
-# CHARTS
-# -----------------------------
-
-# Leaderboard
-st.markdown("<div class='section'>", unsafe_allow_html=True)
-st.subheader("🏆 Recruiter Performance")
 leader = filtered_df.groupby('Recruiter Name').sum(numeric_only=True).reset_index()
 leader['Score'] = leader.select_dtypes(include='number').sum(axis=1)
-fig = px.bar(leader, x='Recruiter Name', y='Score')
-fig.update_layout(template="plotly_dark")
-st.plotly_chart(fig, use_container_width=True)
+
+top_performer = leader.sort_values('Score', ascending=False).head(1)
+low_performer = leader.sort_values('Score', ascending=True).head(1)
+
+# -----------------------------
+# KPI UI (GLASS CARDS)
+# -----------------------------
+st.markdown("<div class='glass'>", unsafe_allow_html=True)
+k1, k2, k3, k4 = st.columns(4)
+
+k1.markdown(f"<div class='kpi'><h3>Total Activity</h3><h1>{int(total)}</h1></div>", unsafe_allow_html=True)
+k2.markdown(f"<div class='kpi'><h3>Recruiters</h3><h1>{filtered_df['Recruiter Name'].nunique()}</h1></div>", unsafe_allow_html=True)
+k3.markdown(f"<div class='kpi'><h3>Top Performer</h3><h1>{top_performer['Recruiter Name'].values[0] if not top_performer.empty else '-'}</h1></div>", unsafe_allow_html=True)
+k4.markdown(f"<div class='kpi'><h3>Needs Attention</h3><h1>{low_performer['Recruiter Name'].values[0] if not low_performer.empty else '-'}</h1></div>", unsafe_allow_html=True)
+
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Weekly trend
-st.markdown("<div class='section'>", unsafe_allow_html=True)
-st.subheader("📅 Weekly Trend")
-weekly = filtered_df.groupby('Week').sum(numeric_only=True).reset_index()
-fig2 = px.line(weekly, x='Week', y=weekly.select_dtypes(include='number').columns)
+# -----------------------------
+# INSIGHTS SECTION
+# -----------------------------
+st.markdown("<div class='glass'>", unsafe_allow_html=True)
+st.subheader("🧠 Insights")
+
+if not leader.empty:
+    best = top_performer['Recruiter Name'].values[0]
+    worst = low_performer['Recruiter Name'].values[0]
+
+    st.success(f"🏆 {best} is the top performer")
+    st.warning(f"⚠️ {worst} needs improvement")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# -----------------------------
+# VISUALS
+# -----------------------------
+col1, col2 = st.columns(2)
+
+# Leaderboard
+fig1 = px.bar(leader, x='Recruiter Name', y='Score', title="Performance")
+fig1.update_layout(template="plotly_dark")
+col1.plotly_chart(fig1, use_container_width=True)
+
+# Contribution
+fig2 = px.pie(leader, names='Recruiter Name', values='Score', title="Contribution")
 fig2.update_layout(template="plotly_dark")
-st.plotly_chart(fig2, use_container_width=True)
+col2.plotly_chart(fig2, use_container_width=True)
+
+# -----------------------------
+# TREND
+# -----------------------------
+st.markdown("<div class='glass'>", unsafe_allow_html=True)
+weekly = filtered_df.groupby('Week').sum(numeric_only=True).reset_index()
+fig3 = px.line(weekly, x='Week', y=weekly.select_dtypes(include='number').columns,
+               title="Weekly Trend", markers=True)
+fig3.update_layout(template="plotly_dark")
+st.plotly_chart(fig3, use_container_width=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Data table
-st.subheader("📋 Data")
-st.dataframe(filtered_df, use_container_width=True)
+# -----------------------------
+# DATA
+# -----------------------------
+with st.expander("📋 View Data"):
+    st.dataframe(filtered_df, use_container_width=True)
